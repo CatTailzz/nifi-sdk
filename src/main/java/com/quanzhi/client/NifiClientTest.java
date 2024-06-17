@@ -1,39 +1,153 @@
 package com.quanzhi.client;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.client.methods.*;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.util.EntityUtils;
 
 public class NifiClientTest {
+    private static final String NIFI_URL = "https://nifi-app-0:8443/nifi-api";
+    private static final String LOGIN_ENDPOINT = "/access/token";
+    private static final String PROCESS_GROUPS_ENDPOINT = "/flow/process-groups/";
+    private static final String PROCESSORS_ENDPOINT = "/processors/";
 
-    public static void main(String[] args) {
-        try {
-            // 从配置文件或者直接指定这些值
-            String nifiUrl = "https://nifi-app-0:8443/nifi-api"; // 替换为你的 NiFi 实例 URL
-            String username = "sysadmin"; // 替换为你的 NiFi 用户名
-            String password = "qzkj@1001@1001"; // 替换为你的 NiFi 密码
-            String processGroupId = "c7d3ca37-85ea-30ce-e8c5-2b5634307f3a"; // 替换为你想启动的流程组的 ID
+    private String accessToken;
 
-            // 创建 NifiClient 实例
-            NifiClient nifiClient = new NifiClient(nifiUrl, username, password);
+    public void login(String username, String password) throws Exception {
+        CloseableHttpClient client = HttpClients.custom()
+                .setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (certificate, authType) -> true).build())
+                .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                .build();
+        HttpPost post = new HttpPost(NIFI_URL + LOGIN_ENDPOINT);
 
-            // 获取根流程组 ID 并打印
-            String rootProcessGroupId = nifiClient.getRootProcessGroupId();
-            System.out.println("Root Process Group ID: " + rootProcessGroupId);
+        StringEntity entity = new StringEntity("username=" + username + "&password=" + password);
+        entity.setContentType("application/x-www-form-urlencoded");
+        post.setEntity(entity);
 
-            // 启动指定的流程组
-            System.out.println("Starting process group: " + processGroupId);
-            nifiClient.startProcessGroup(processGroupId);
-            System.out.println("Process group started successfully.");
-
-            // 获取某个 Processor 的 ID 并启动
-            // 你需要提供你想要启动的 Processor 的 ID
-//            String processorId = "YOUR_PROCESSOR_ID";
-//            System.out.println("Starting processor: " + processorId);
-//            nifiClient.startProcessor(processorId);
-//            System.out.println("Processor started successfully.");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Error occurred while starting the processor or process group.");
+        try (CloseableHttpResponse response = client.execute(post)) {
+            String responseString = EntityUtils.toString(response.getEntity());
+            this.accessToken = responseString.trim();
+        } finally {
+            client.close();
         }
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public JsonNode getProcessGroups(String parentGroupId) throws Exception {
+        String url = NIFI_URL + PROCESS_GROUPS_ENDPOINT + parentGroupId;
+        CloseableHttpClient client = createClient();
+        HttpGet get = new HttpGet(url);
+        get.setHeader("Authorization", "Bearer " + accessToken);
+
+        try (CloseableHttpResponse response = client.execute(get)) {
+            String responseString = EntityUtils.toString(response.getEntity());
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readTree(responseString);
+        } finally {
+            client.close();
+        }
+    }
+
+    public void startProcessor(String processorId) throws Exception {
+        updateProcessorState(processorId, "RUNNING");
+    }
+
+    public void stopProcessor(String processorId) throws Exception {
+        updateProcessorState(processorId, "STOPPED");
+    }
+
+    private void updateProcessorState(String processorId, String state) throws Exception {
+        String url = NIFI_URL + PROCESSORS_ENDPOINT + processorId + "/run-status";
+        CloseableHttpClient client = createClient();
+        HttpPut put = new HttpPut(url);
+        put.setHeader("Authorization", "Bearer " + accessToken);
+        put.setHeader("Content-Type", "application/json");
+
+        int currentVersion = getCurrentProcessorVersion(processorId);
+
+        String json = "{\"revision\":{\"version\":" + currentVersion + "},\"state\":\"" + state + "\"}";
+        StringEntity entity = new StringEntity(json);
+        put.setEntity(entity);
+
+        try (CloseableHttpResponse response = client.execute(put)) {
+            // Check response status
+            if (response.getStatusLine().getStatusCode() != 200) {
+                throw new RuntimeException("Failed to update processor state: " + response.getStatusLine().getReasonPhrase());
+            }
+        } finally {
+            client.close();
+        }
+    }
+
+    private int getCurrentProcessorVersion(String processorId) throws Exception {
+        String url = NIFI_URL + PROCESSORS_ENDPOINT + processorId;
+        CloseableHttpClient client = createClient();
+        HttpGet get = new HttpGet(url);
+        get.setHeader("Authorization", "Bearer " + accessToken);
+
+        try (CloseableHttpResponse response = client.execute(get)) {
+            String responseString = EntityUtils.toString(response.getEntity());
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(responseString);
+
+            // Extract version from JSON response
+            int version = rootNode.get("revision").get("version").asInt();
+            return version;
+        } finally {
+            client.close();
+        }
+    }
+
+    private CloseableHttpClient createClient() throws Exception {
+        return HttpClients.custom()
+                .setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (certificate, authType) -> true).build())
+                .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                .build();
+    }
+
+    public void startProcessGroup(String processGroupId) throws Exception {
+        // Start all processors in the process group
+        JsonNode processGroup = getProcessGroups(processGroupId);
+        JsonNode processors = processGroup.get("processGroupFlow").get("flow").get("processors");
+
+        if (processors != null) {
+            for (JsonNode processor : processors) {
+                String processorId = processor.get("id").asText();
+                startProcessor(processorId);
+            }
+        }
+
+        // Start all child process groups recursively
+        JsonNode childProcessGroups = processGroup.get("processGroupFlow").get("flow").get("processGroups");
+        if (childProcessGroups != null) {
+            for (JsonNode childProcessGroup : childProcessGroups) {
+                String childProcessGroupId = childProcessGroup.get("id").asText();
+                startProcessGroup(childProcessGroupId);
+            }
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        NifiClientTest client = new NifiClientTest();
+        client.login("sysadmin", "qzkj@1001@1001");
+        System.out.println("Token: " + client.getAccessToken());
+
+        // 获取任务流
+        JsonNode processGroups = client.getProcessGroups("root");
+        System.out.println("Process Groups: " + processGroups);
+
+        // 启动整个任务组
+        client.startProcessGroup("c7d3ca37-85ea-30ce-e8c5-2b5634307f3a");
+
+        // 关闭任务
+        // client.stopProcessor("1030bd87-0190-1000-54f0-f60a1a08c6f6");
     }
 }

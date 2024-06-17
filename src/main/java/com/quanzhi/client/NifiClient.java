@@ -78,20 +78,20 @@ public class NifiClient extends AbstractNifiClient{
         put.setEntity(new StringEntity(json));
 
 
-        try (CloseableHttpResponse response = getHttpClient().execute(put)) {
-            int statusCode = response.getStatusLine().getStatusCode();
-            // Check response status
-            if (statusCode != 200) {
-                throw new RuntimeException("Failed to update processor state: " + response.getStatusLine().getReasonPhrase());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Exception occurred during updating processor state", e);
-        }
-//        executeRequest(put, rootNode -> {
-//            System.out.println("Processor state updated successfully");
-//            return null;
-//        });
+//        try (CloseableHttpResponse response = getHttpClient().execute(put)) {
+//            int statusCode = response.getStatusLine().getStatusCode();
+//            // Check response status
+//            if (statusCode != 200) {
+//                throw new RuntimeException("Failed to update processor state: " + response.getStatusLine().getReasonPhrase());
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            throw new RuntimeException("Exception occurred during updating processor state", e);
+//        }
+        executeRequest(put, rootNode -> {
+            System.out.println("Processor state updated successfully");
+            return null;
+        });
     }
 
     // 获取处理器版本号

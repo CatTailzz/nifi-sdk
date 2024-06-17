@@ -35,15 +35,17 @@ public abstract class AbstractNifiClient implements Constants{
     private final String password;
     private String accessToken;
     private long tokenExpiryTime;
-    private final CloseableHttpClient httpClient;
+//    private final CloseableHttpClient httpClient;
 
     public AbstractNifiClient(String nifiUrl, String username, String password) throws Exception {
         this.nifiUrl = nifiUrl;
         this.username = username;
         this.password = password;
-        this.httpClient = createHttpClient();
+//        this.httpClient = createHttpClient();
         login(); // 自动登录
     }
+
+
 
     private CloseableHttpClient createHttpClient() throws Exception {
         SSLContext sslContext;
@@ -73,6 +75,8 @@ public abstract class AbstractNifiClient implements Constants{
         entity.setContentType("application/x-www-form-urlencoded");
         post.setEntity(entity);
 
+        CloseableHttpClient httpClient = createHttpClient();
+
 
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             int statusCode = response.getStatusLine().getStatusCode();
@@ -86,6 +90,8 @@ public abstract class AbstractNifiClient implements Constants{
             // handle exception (e.g., log error)
             e.printStackTrace();
             throw new RuntimeException("Failed to login", e);
+        } finally {
+            httpClient.close();
         }
     }
 
@@ -93,6 +99,7 @@ public abstract class AbstractNifiClient implements Constants{
         try {
             ensureLoggedIn();
             request.setHeader("Authorization", "Bearer " + accessToken);
+            CloseableHttpClient httpClient = createHttpClient();
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 if (statusCode == 403) {
@@ -105,6 +112,8 @@ public abstract class AbstractNifiClient implements Constants{
                 } else {
                     return handleResponse(response, handler);
                 }
+            } finally {
+                httpClient.close();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -135,10 +144,6 @@ public abstract class AbstractNifiClient implements Constants{
 
     protected String getAccessToken() {
         return accessToken;
-    }
-
-    protected CloseableHttpClient getHttpClient() {
-        return httpClient;
     }
 
     protected interface JsonResponseHandler<T> {
