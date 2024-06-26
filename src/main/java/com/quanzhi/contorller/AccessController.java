@@ -2,6 +2,7 @@ package com.quanzhi.contorller;
 
 import com.quanzhi.client.NifiClient;
 import com.quanzhi.service.NifiService;
+import com.quanzhi.vo.ResponseVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +23,7 @@ public class AccessController {
     private NifiService nifiService;
 
     @GetMapping("/process-groups/getGroupsList")
-    public List<Map<String, Object>> getProcessGroups() {
+    public ResponseVo getProcessGroups() {
         return nifiService.getProcessGroups();
     }
 
@@ -34,5 +35,10 @@ public class AccessController {
     @PutMapping("/process-groups/stop/{processGroupId}")
     public void stopProcessGroup(@PathVariable String processGroupId) throws Exception {
         nifiService.stopProcessGroup(processGroupId);
+    }
+
+    @GetMapping("/process-groups/status/{processGroupId}")
+    public ResponseVo processGroupHealth(@PathVariable String processGroupId) throws Exception {
+        return nifiService.ProcessGroupHealth(processGroupId);
     }
 }
