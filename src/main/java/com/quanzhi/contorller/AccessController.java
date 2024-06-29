@@ -2,7 +2,9 @@ package com.quanzhi.contorller;
 
 import com.quanzhi.client.NifiClient;
 import com.quanzhi.service.NifiService;
+import com.quanzhi.vo.ProcessGroupInfo;
 import com.quanzhi.vo.ResponseVo;
+import com.quanzhi.vo.StatusDetail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +25,7 @@ public class AccessController {
     private NifiService nifiService;
 
     @GetMapping("/process-groups/getGroupsList")
-    public ResponseVo getProcessGroups() {
+    public ResponseVo<List<ProcessGroupInfo>> getProcessGroups() {
         return nifiService.getProcessGroups();
     }
 
@@ -38,7 +40,7 @@ public class AccessController {
     }
 
     @GetMapping("/process-groups/status/{processGroupId}")
-    public ResponseVo processGroupHealth(@PathVariable String processGroupId) throws Exception {
-        return nifiService.ProcessGroupHealth(processGroupId);
+    public ResponseVo<List<StatusDetail>> processGroupHealth(@PathVariable String processGroupId) throws Exception {
+        return nifiService.processGroupHealth(processGroupId);
     }
 }

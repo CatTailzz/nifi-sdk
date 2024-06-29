@@ -9,10 +9,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @date: 2024/6/13
  * @Copyright: https://github.com/CatTailzz
  */
-@SpringBootApplication
-public class NifiApplication {
-    public static void main(String[] args) {
-
-        SpringApplication.run(NifiApplication.class, args);
-    }
-}
+//@SpringBootApplication
+//public class NifiApplication {
+//    public static void main(String[] args) {
+//
+//        SpringApplication.run(NifiApplication.class, args);
+//    }
+//}

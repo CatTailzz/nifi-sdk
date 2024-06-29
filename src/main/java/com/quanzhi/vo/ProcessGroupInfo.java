@@ -21,4 +21,8 @@ public class ProcessGroupInfo {
 
     private String state;
 
+    private String read;
+
+    private String written;
+
 }

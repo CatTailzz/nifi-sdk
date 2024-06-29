@@ -35,14 +35,16 @@ public abstract class AbstractNifiClient implements Constants{
     private final String password;
     private String accessToken;
     private long tokenExpiryTime;
-//    private final CloseableHttpClient httpClient;
 
     public AbstractNifiClient(String nifiUrl, String username, String password) throws Exception {
         this.nifiUrl = nifiUrl;
         this.username = username;
         this.password = password;
-//        this.httpClient = createHttpClient();
-        login(); // 自动登录
+        try {
+            login(); // 自动登录
+        } catch (Exception e) {
+            System.err.println("Failed to login NiFi during initialization: " + e.getMessage());
+        }
     }
 
 
@@ -134,7 +136,12 @@ public abstract class AbstractNifiClient implements Constants{
 
     private void ensureLoggedIn() throws Exception {
         if (this.accessToken == null || System.currentTimeMillis() >= tokenExpiryTime) {
-            login();
+            try {
+                login();
+            } catch (Exception e) {
+                System.err.println("Failed to re-login NiFI: " + e.getMessage());
+                throw new RuntimeException("Failed to re-login NiFi", e);
+            }
         }
     }
 

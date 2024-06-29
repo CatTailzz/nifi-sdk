@@ -101,7 +101,7 @@ public class NifiClient extends AbstractNifiClient{
         });
     }
 
-    public ResponseVo checkProcessGroupStatus(String processGroupId) throws Exception {
+    public ResponseVo<List<StatusDetail>> checkProcessGroupStatus(String processGroupId) throws Exception {
         Map<String, String> processorStatuses = getProcessorStatuses(processGroupId);
         Map<String, List<String>> bulletins = getProcessorBulletins(processGroupId);
 
@@ -133,7 +133,7 @@ public class NifiClient extends AbstractNifiClient{
         } else if (allRunning) {
             return ResponseVo.ok(200, details, "正常运行");
         } else {
-            return ResponseVo.ok(202, details, "未知状态，请检查控制面板");
+            return ResponseVo.ok(202, details, "部分组件停止");
         }
     }
 
