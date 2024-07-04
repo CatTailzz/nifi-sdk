@@ -1,5 +1,6 @@
 package com.quanzhi.vo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,10 +20,34 @@ public class ProcessGroupInfo {
 
     private String name;
 
-    private String state;
+    private ProcessGroupState state;
+
+    private String comments;
 
     private String read;
 
     private String written;
 
+
+
+    @JsonProperty("isFinished")
+    public boolean isFinished() {
+        return "0 bytes".equals(read) && "0 bytes".equals(written);
+    }
+
+    @JsonProperty("runningState")
+    public RunningState getRunningState() {
+        if (state == ProcessGroupState.STOPPED) {
+            return RunningState.NOT_RUNNING;
+        } else if (state == ProcessGroupState.NORMAL_RUNNING) {
+            if ("0 bytes".equals(read) && "0 bytes".equals(written)) {
+                return RunningState.NORMAL_END;
+            } else {
+                return RunningState.RUNNING;
+            }
+        } else if (state == ProcessGroupState.EXECUTION_EXCEPTION || state == ProcessGroupState.CONFIGURATION_ERROR) {
+            return RunningState.ABNORMAL_END;
+        }
+        return RunningState.ABNORMAL_END; // 默认异常结束状态
+    }
 }
