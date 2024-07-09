@@ -1,2 +1,2 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.quanzhi.config.NifiAutoConfiguration
+#org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+#com.quanzhi.config.NifiAutoConfiguration

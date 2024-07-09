@@ -12,8 +12,6 @@ import lombok.NoArgsConstructor;
  * @Copyright: https://github.com/CatTailzz
  */
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class ProcessGroupInfo {
 
     private String id;
@@ -24,9 +22,23 @@ public class ProcessGroupInfo {
 
     private String comments;
 
+
     private String read;
 
     private String written;
+
+    public ProcessGroupInfo(String id, String name, ProcessGroupState state, String comments, String read, String written) {
+        this.id = id;
+        this.name = name;
+        this.state = state;
+        this.comments = comments;
+        this.read = read;
+        this.written = written;
+    }
+
+    public ProcessGroupInfo(){
+
+    }
 
 
 

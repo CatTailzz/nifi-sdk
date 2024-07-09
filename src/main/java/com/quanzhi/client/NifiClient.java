@@ -21,8 +21,9 @@ public class NifiClient extends AbstractNifiClient{
 
     public NifiClient(@Value("${nifi.url}") String nifiUrl,
                       @Value("${nifi.username}") String username,
-                      @Value("${nifi.password}") String password) throws Exception {
-        super(nifiUrl, username, password);
+                      @Value("${nifi.password}") String password,
+                      @Value("${nifi.customHost}") String customHost) throws Exception {
+        super(nifiUrl, username, password, customHost);
     }
 
 

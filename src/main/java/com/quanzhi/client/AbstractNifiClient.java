@@ -17,10 +17,13 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.security.KeyManagementException;
+import java.util.Arrays;
 
 /**
  * @description: 管理登录和连接的公共逻辑，包装一些发请求方法
@@ -30,16 +33,21 @@ import java.security.KeyManagementException;
  */
 public abstract class AbstractNifiClient implements Constants{
 
+    private static final Logger logger = LoggerFactory.getLogger(AbstractNifiClient.class);
+
+
     private final String nifiUrl;
     private final String username;
     private final String password;
     private String accessToken;
     private long tokenExpiryTime;
+    private final String customHost;
 
-    public AbstractNifiClient(String nifiUrl, String username, String password) throws Exception {
+    public AbstractNifiClient(String nifiUrl, String username, String password, String customHost) throws Exception {
         this.nifiUrl = nifiUrl;
         this.username = username;
         this.password = password;
+        this.customHost = customHost;
         try {
             login(); // 自动登录
         } catch (Exception e) {
@@ -76,6 +84,9 @@ public abstract class AbstractNifiClient implements Constants{
         StringEntity entity = new StringEntity("username=" + username + "&password=" + password);
         entity.setContentType("application/x-www-form-urlencoded");
         post.setEntity(entity);
+        post.setHeader("Host", customHost);
+
+        logRequestHeaders(post);
 
         CloseableHttpClient httpClient = createHttpClient();
 
@@ -90,7 +101,8 @@ public abstract class AbstractNifiClient implements Constants{
             this.tokenExpiryTime = System.currentTimeMillis() + 3600 * 1000 * 6; // 假设 token 有效期为 1 小时
         } catch (Exception e) {
             // handle exception (e.g., log error)
-            e.printStackTrace();
+            logger.error("Failed to login", e);
+//            e.printStackTrace();
             throw new RuntimeException("Failed to login", e);
         } finally {
             httpClient.close();
@@ -101,6 +113,10 @@ public abstract class AbstractNifiClient implements Constants{
         try {
             ensureLoggedIn();
             request.setHeader("Authorization", "Bearer " + accessToken);
+            request.setHeader("Host", customHost);
+
+            logRequestHeaders(request);
+
             CloseableHttpClient httpClient = createHttpClient();
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 int statusCode = response.getStatusLine().getStatusCode();
@@ -108,6 +124,7 @@ public abstract class AbstractNifiClient implements Constants{
                     // 重新登录并重试请求
                     login();
                     request.setHeader("Authorization", "Bearer " + accessToken);
+                    request.setHeader("Host", customHost);
                     try (CloseableHttpResponse retryResponse = httpClient.execute(request)) {
                         return handleResponse(retryResponse, handler);
                     }
@@ -143,6 +160,12 @@ public abstract class AbstractNifiClient implements Constants{
                 throw new RuntimeException("Failed to re-login NiFi", e);
             }
         }
+    }
+
+    private void logRequestHeaders(HttpUriRequest request) {
+        logger.info("Request URI: {}", request.getURI());
+        Arrays.stream(request.getAllHeaders())
+                .forEach(header -> logger.info("Request Header: {}={}", header.getName(), header.getValue()));
     }
 
     protected String getNifiUrl() {
