@@ -2,19 +2,14 @@ package com.quanzhi.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
@@ -34,7 +29,6 @@ import java.util.Arrays;
 public abstract class AbstractNifiClient implements Constants{
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractNifiClient.class);
-
 
     private final String nifiUrl;
     private final String username;
@@ -56,7 +50,6 @@ public abstract class AbstractNifiClient implements Constants{
     }
 
 
-
     private CloseableHttpClient createHttpClient() throws Exception {
         SSLContext sslContext;
         try {
@@ -67,12 +60,10 @@ public abstract class AbstractNifiClient implements Constants{
             throw new KeyManagementException("Failed to create SSL context", e);
         }
 
-        // Create a connection manager with custom SSL context
         SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(
                 sslContext,
                 NoopHostnameVerifier.INSTANCE);
 
-        // Create HTTP client with custom SSL context
         return HttpClients.custom()
                 .setSSLSocketFactory(sslSocketFactory)
                 .build();
@@ -100,9 +91,7 @@ public abstract class AbstractNifiClient implements Constants{
             this.accessToken = responseString.trim();
             this.tokenExpiryTime = System.currentTimeMillis() + 3600 * 1000 * 6; // 假设 token 有效期为 1 小时
         } catch (Exception e) {
-            // handle exception (e.g., log error)
             logger.error("Failed to login", e);
-//            e.printStackTrace();
             throw new RuntimeException("Failed to login", e);
         } finally {
             httpClient.close();

@@ -117,6 +117,10 @@ public class NifiService {
         }
     }
 
+    public ResponseVo<JsonNode> getOpenApiConfig() throws Exception {
+        return ResponseVo.ok(nifiClient.getOpenApiProcessGroups("root"));
+    }
+
 
 
 }

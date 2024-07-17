@@ -1,5 +1,6 @@
 package com.quanzhi.contorller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.quanzhi.client.NifiClient;
 import com.quanzhi.service.NifiService;
 import com.quanzhi.vo.ProcessGroupInfo;
@@ -42,5 +43,10 @@ public class AccessController {
     @GetMapping("/process-groups/status/{processGroupId}")
     public ResponseVo<List<StatusDetail>> processGroupHealth(@PathVariable String processGroupId) throws Exception {
         return nifiService.processGroupHealth(processGroupId);
+    }
+
+    @GetMapping("/process-groups/openApiList")
+    public ResponseVo<JsonNode> getOpenApiProcessGroups() throws Exception {
+        return nifiService.getOpenApiConfig();
     }
 }

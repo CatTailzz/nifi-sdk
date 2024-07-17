@@ -1,13 +1,17 @@
 package com.quanzhi.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quanzhi.utils.ApiDocumentUtils;
+import com.quanzhi.vo.ApiDocument;
 import com.quanzhi.vo.ResponseVo;
 import com.quanzhi.vo.StatusDetail;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -36,14 +40,19 @@ public class NifiClient extends AbstractNifiClient{
                 rootNode.get("processGroupFlow").get("id").asText());
     }
 
-    // 获取所有子流程组
+    // 获取所有常规子流程组
     public List<JsonNode> getProcessGroups(String parentGroupId) throws Exception {
         String url = getNifiUrl() + PROCESS_GROUPS_ENDPOINT + parentGroupId;
         HttpGet get = new HttpGet(url);
 
         return executeRequest(get, rootNode -> {
             List<JsonNode> processGroups = new ArrayList<>();
-            rootNode.get("processGroupFlow").get("flow").get("processGroups").forEach(processGroups::add);
+            rootNode.get("processGroupFlow").get("flow").get("processGroups").forEach(processGroup -> {
+                String groupName = processGroup.get("component").get("name").asText();
+                if (!groupName.endsWith("-openapi")) {
+                    processGroups.add(processGroup);
+                }
+            });
             return processGroups;
         });
     }
@@ -57,6 +66,59 @@ public class NifiClient extends AbstractNifiClient{
             List<JsonNode> processors = new ArrayList<>();
             rootNode.get("processGroupFlow").get("flow").get("processors").forEach(processors::add);
             return processors;
+        });
+    }
+
+
+    // 获取所有openapi的config processor
+    public JsonNode getOpenApiProcessGroups(String parentGroupId) throws Exception {
+        List<ApiDocument> apiDocuments = new ArrayList<>();
+        getProcessGroupsRecursive(parentGroupId, apiDocuments);
+
+        ApiDocumentUtils apiDocumentUtils = new ApiDocumentUtils();
+        List<JsonNode> documents = new ArrayList<>();
+        for (ApiDocument apiDocument : apiDocuments) {
+            documents.add(apiDocumentUtils.toJson(apiDocument));
+        }
+        return new ObjectMapper().createArrayNode().addAll(documents);
+    }
+
+    private void getProcessGroupsRecursive(String parentGroupId, List<ApiDocument> apiDocuments) throws Exception {
+        String url = getNifiUrl() + PROCESS_GROUPS_ENDPOINT + parentGroupId;
+        HttpGet get = new HttpGet(url);
+
+        executeRequest(get, rootNode -> {
+            rootNode.get("processGroupFlow").get("flow").get("processGroups").forEach(processGroup -> {
+                String groupName = processGroup.get("component").get("name").asText();
+                if (groupName.endsWith("-openapi")) {
+                    // Recursively get child process groups
+                    String childGroupId = processGroup.get("component").get("id").asText();
+                    try {
+                        getProcessGroupsRecursive(childGroupId, apiDocuments);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    // Get processors with names ending with -config
+                    try {
+                        getProcessors(childGroupId).forEach(processor -> {
+                            String processorName = processor.get("component").get("name").asText();
+                            if (processorName.endsWith("-config")) {
+                                ApiDocumentUtils apiDocumentUtils = new ApiDocumentUtils();
+                                ApiDocument apiDocument = null;
+                                try {
+                                    apiDocument = apiDocumentUtils.parseConfigProcessor(processor);
+                                } catch (JsonProcessingException e) {
+                                    throw new RuntimeException(e);
+                                }
+                                apiDocuments.add(apiDocument);
+                            }
+                        });
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            return null;
         });
     }
 
