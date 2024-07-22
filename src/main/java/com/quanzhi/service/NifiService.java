@@ -85,11 +85,14 @@ public class NifiService {
 
     // 按id启动processGroup
     public void startProcessGroup(String processGroupId) throws Exception {
+        // 需改为前端防抖或后端判断状态，先直接sleep1.5秒
+        Thread.sleep(1500);
         nifiClient.startProcessGroup(processGroupId);
     }
 
     // 按id停止processGroup
     public void stopProcessGroup(String processGroupId) throws Exception {
+        Thread.sleep(1500);
         nifiClient.stopProcessGroup(processGroupId);
     }
 
