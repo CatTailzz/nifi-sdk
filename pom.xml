@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.quanzhi</groupId>
-    <artifactId>nifi</artifactId>
+    <artifactId>nifi-sdk</artifactId>
     <version>1.0.2-SNAPSHOT</version>
     <name>nifi</name>
     <packaging>jar</packaging>
